@@ -2,7 +2,20 @@ const { MongoClient } = require('mongodb');
 const fs = require('fs');
 const path = require('path');
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://nagaarjunn31_db_user:CVRobOwLeDDFzkVD@cluster0.3qpdvfo.mongodb.net/albam_db?retryWrites=true&w=majority&appName=Cluster0";
+// Load environment variables from .env.local if not already provided
+if (!process.env.MONGODB_URI) {
+  try {
+    const envContent = fs.readFileSync(path.resolve(process.cwd(), '.env.local'), 'utf8');
+    for (const line of envContent.split('\n')) {
+      const [k, ...v] = line.trim().split('=');
+      if (k && v.length) process.env[k.trim()] = v.join('=').trim();
+    }
+  } catch (e) {
+    // Ignore if file doesn't exist
+  }
+}
+
+const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.MONGODB_DB || "albam_db";
 const MEDIA_DIR = 'G:\\MY';
 
