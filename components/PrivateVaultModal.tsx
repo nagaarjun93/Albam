@@ -37,7 +37,10 @@ export default function PrivateVaultModal({
   const [isLoading, setIsLoading] = useState(false);
   const [activePhoto, setActivePhoto] = useState<IPhoto | null>(null);
 
-  const correctPin = process.env.NEXT_PUBLIC_PRIVATE_VAULT_PIN || '0702';
+  const correctPin =
+    process.env.NEXT_PUBLIC_PRIVATE_VAULT_PIN ||
+    process.env.NEXT_PUBLIC_PRIVATE_PIN ||
+    '0702';
 
   // Fetch private photos
   const fetchPrivatePhotos = useCallback(async () => {
