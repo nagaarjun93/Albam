@@ -77,14 +77,18 @@ export default function AlbumApp() {
     }
   }, [fetchStats, isLocked]);
 
-  // Fetch ALL photos automatically without stopping (No pagination buttons required)
+  // Fetch photos in continuous fast streams (avoids Vercel 4.5MB payload limit while auto-loading all memories)
+  const cancelFetchRef = React.useRef(0);
+
   const fetchPhotos = useCallback(async () => {
     setIsLoading(true);
+    const fetchId = Date.now();
+    cancelFetchRef.current = fetchId;
 
     try {
       const params = new URLSearchParams({
         page: '1',
-        limit: '3000', // Load all 1131+ photos in one continuous stream
+        limit: '30', // Fast 30-photo initial burst for mobile
         category: activeCategory,
         search: debouncedSearch,
       });
@@ -97,15 +101,44 @@ export default function AlbumApp() {
       if (!res.ok) throw new Error('Failed to fetch photos');
 
       const data = await res.json();
+      if (cancelFetchRef.current !== fetchId) return;
 
-      setPhotos(data.photos || []);
-      setTotalPhotos(data.total);
+      const initialPhotos = data.photos || [];
+      setPhotos(initialPhotos);
+      setTotalPhotos(data.total || initialPhotos.length);
       if (data.categories && data.categories.length > 0) {
         setCategories(data.categories);
       }
+      setIsLoading(false);
+
+      // Auto-load remaining pages in background without stopping (No "Load More" button needed!)
+      const totalPages = data.totalPages || 1;
+      for (let p = 2; p <= totalPages; p++) {
+        if (cancelFetchRef.current !== fetchId) break;
+        try {
+          const nextParams = new URLSearchParams({
+            page: p.toString(),
+            limit: '30',
+            category: activeCategory,
+            search: debouncedSearch,
+          });
+          if (activeCategory === 'Favorites') nextParams.set('favorites', 'true');
+          const nextRes = await fetch(`/api/photos?${nextParams.toString()}`);
+          if (nextRes.ok) {
+            const nextData = await nextRes.json();
+            if (cancelFetchRef.current !== fetchId) break;
+            setPhotos((prev) => {
+              const existingIds = new Set(prev.map((item) => item._id));
+              const newItems = (nextData.photos || []).filter((item: IPhoto) => !existingIds.has(item._id));
+              return [...prev, ...newItems];
+            });
+          }
+        } catch (bgErr) {
+          console.warn('Auto-stream batch failed:', bgErr);
+        }
+      }
     } catch (err) {
       console.error('Error fetching photos:', err);
-    } finally {
       setIsLoading(false);
     }
   }, [activeCategory, debouncedSearch]);
