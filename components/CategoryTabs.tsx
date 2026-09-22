@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Heart, Film, Sparkles, Layers } from 'lucide-react';
+import { Heart, Film, Sparkles, Layers, Image as ImageIcon } from 'lucide-react';
 
 interface CategoryTabsProps {
   categories: string[];
@@ -9,6 +9,7 @@ interface CategoryTabsProps {
   onSelectCategory: (category: string) => void;
   favoritesCount?: number;
   videosCount?: number;
+  imagesCount?: number;
 }
 
 export default function CategoryTabs({
@@ -17,15 +18,18 @@ export default function CategoryTabs({
   onSelectCategory,
   favoritesCount = 0,
   videosCount = 0,
+  imagesCount = 0,
 }: CategoryTabsProps) {
   const getIcon = (cat: string) => {
     if (cat === 'Favorites') return <Heart className="w-3.5 h-3.5 fill-current text-rose-500" />;
-    if (cat === 'Videos') return <Film className="w-3.5 h-3.5" />;
+    if (cat === 'Videos') return <Film className="w-3.5 h-3.5 text-blue-500" />;
+    if (cat === 'Images' || cat === 'Photos') return <ImageIcon className="w-3.5 h-3.5 text-rose-500" />;
     if (cat === 'All') return <Layers className="w-3.5 h-3.5" />;
     return <Sparkles className="w-3.5 h-3.5 text-pink-400" />;
   };
 
   const getBadge = (cat: string) => {
+    if ((cat === 'Images' || cat === 'Photos') && imagesCount > 0) return imagesCount;
     if (cat === 'Favorites' && favoritesCount > 0) return favoritesCount;
     if (cat === 'Videos' && videosCount > 0) return videosCount;
     return null;

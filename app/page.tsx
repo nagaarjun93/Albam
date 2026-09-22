@@ -13,7 +13,7 @@ import { Loader2, Heart, Sparkles, RefreshCw } from 'lucide-react';
 
 export default function HomePage() {
   const [photos, setPhotos] = useState<IPhoto[]>([]);
-  const [categories, setCategories] = useState<string[]>(['All', 'Favorites', 'Videos']);
+  const [categories, setCategories] = useState<string[]>(['All', 'Images', 'Videos', 'Favorites']);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -255,6 +255,7 @@ export default function HomePage() {
             onSelectCategory={setActiveCategory}
             favoritesCount={stats?.favoritesCount}
             videosCount={stats?.videosCount}
+            imagesCount={stats?.imagesCount}
           />
         </div>
 

@@ -21,12 +21,16 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: any = {};
 
-    if (category && category !== 'All' && category !== 'Favorites' && category !== 'Videos') {
+    if (category && !['All', 'Favorites', 'Videos', 'Images', 'Photos'].includes(category)) {
       filter.category = category;
     }
 
     if (category === 'Favorites' || favoritesOnly) {
       filter.isFavorite = true;
+    }
+
+    if (category === 'Images' || category === 'Photos' || mediaType === 'image') {
+      filter.mediaType = 'image';
     }
 
     if (category === 'Videos' || mediaType === 'video') {
@@ -62,7 +66,7 @@ export async function GET(request: NextRequest) {
       page,
       totalPages: Math.ceil(total / limit),
       hasMore: skip + photos.length < total,
-      categories: ['All', 'Favorites', 'Videos', ...distinctCategories.filter((c) => c && c !== 'All' && c !== 'Favorites' && c !== 'Videos')],
+      categories: ['All', 'Images', 'Videos', 'Favorites', ...distinctCategories.filter((c) => c && !['All', 'Images', 'Photos', 'Videos', 'Favorites'].includes(c))],
     });
   } catch (error) {
     console.error('Error fetching photos:', error);

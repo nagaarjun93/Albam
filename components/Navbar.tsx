@@ -54,8 +54,18 @@ export default function Navbar({
                 currentCategory === 'All' ? 'bg-rose-500 text-white shadow-sm' : 'hover:bg-rose-100'
               }`}
             >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{stats.total} All</span>
+            </button>
+            <span className="text-rose-300">•</span>
+            <button 
+              onClick={() => onSelectCategory('Images')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full transition-all ${
+                currentCategory === 'Images' ? 'bg-rose-500 text-white shadow-sm' : 'hover:bg-rose-100'
+              }`}
+            >
               <ImageIcon className="w-3.5 h-3.5" />
-              <span>{stats.total} Moments</span>
+              <span>{stats.imagesCount} Images</span>
             </button>
             <span className="text-rose-300">•</span>
             <button 
