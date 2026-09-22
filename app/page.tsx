@@ -72,8 +72,10 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    if (!isLocked) {
+      fetchStats();
+    }
+  }, [fetchStats, isLocked]);
 
   // Fetch ALL photos automatically without stopping (No pagination buttons required)
   const fetchPhotos = useCallback(async () => {
@@ -110,8 +112,10 @@ export default function HomePage() {
 
   // Re-fetch on category or search change
   useEffect(() => {
-    fetchPhotos();
-  }, [fetchPhotos]);
+    if (!isLocked) {
+      fetchPhotos();
+    }
+  }, [fetchPhotos, isLocked]);
 
   // Toggle favorite with optimistic update
   const handleToggleFavorite = async (id: string, current: boolean) => {
@@ -236,10 +240,13 @@ export default function HomePage() {
     }
   };
 
+  // 6-Digit Passcode Lock (312005)
+  if (isLocked) {
+    return <PasscodeLock onUnlock={() => setIsLocked(false)} />;
+  }
+
   return (
-    <div className="min-h-screen flex flex-col justify-between">
-      {/* 6-Digit Passcode Lock (312005) */}
-      {isLocked && <PasscodeLock onUnlock={() => setIsLocked(false)} />}
+    <div className="min-h-screen flex flex-col justify-between animate-fade-in">
 
       {/* Navigation Bar */}
       <Navbar
