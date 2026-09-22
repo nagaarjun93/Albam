@@ -40,9 +40,75 @@ export default function UploadModal({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const [uploadProgress, setUploadProgress] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
+
+  const compressImageForUpload = async (file: File): Promise<File> => {
+    // If video or gif, don't compress via canvas
+    if (file.type.startsWith('video/') || file.type === 'image/gif') {
+      return file;
+    }
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      const objUrl = URL.createObjectURL(file);
+      img.src = objUrl;
+
+      img.onload = () => {
+        URL.revokeObjectURL(objUrl);
+        const canvas = document.createElement('canvas');
+        const MAX_DIM = 1600; // Optimal for mobile/laptop screens and fits in MongoDB easily
+        let { width, height } = img;
+
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressed = new File(
+                [blob],
+                file.name.replace(/\.[^/.]+$/, '.jpg'),
+                { type: 'image/jpeg', lastModified: Date.now() }
+              );
+              resolve(compressed);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          0.8
+        );
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objUrl);
+        resolve(file);
+      };
+    });
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -61,6 +127,10 @@ export default function UploadModal({
         setTitle(`Special Moments (${selectedFiles.length} items)`);
       }
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -90,34 +160,58 @@ export default function UploadModal({
 
     setIsUploading(true);
     setError(null);
+    setUploadProgress(`Preparing ${files.length} memory(ies)...`);
 
     try {
-      const formData = new FormData();
-      files.forEach((file) => {
-        formData.append('files', file);
-      });
-      formData.append('title', title || 'Special Moment');
-      formData.append('caption', caption);
-      formData.append('category', category === 'Custom' ? customCategory || 'Memories' : category);
-      formData.append('date', date);
-      formData.append('notes', notes);
-      formData.append('isPrivate', isPrivate ? 'true' : 'false');
+      const allUploaded: IPhoto[] = [];
 
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      // Process and upload files safely so Vercel 4.5MB limit is never exceeded
+      for (let i = 0; i < files.length; i++) {
+        const originalFile = files[i];
+        setUploadProgress(`Uploading ${i + 1} of ${files.length}...`);
 
-      const data = await res.json();
+        const optimizedFile = await compressImageForUpload(originalFile);
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to upload photo(s)');
+        const formData = new FormData();
+        formData.append('files', optimizedFile);
+
+        let itemTitle = title || 'Special Moment';
+        if (files.length > 1) {
+          itemTitle = title ? `${title} (${i + 1})` : `Memory (${i + 1})`;
+        }
+        formData.append('title', itemTitle);
+        formData.append('caption', caption);
+        formData.append('category', category === 'Custom' ? customCategory || 'Memories' : category);
+        formData.append('date', date);
+        formData.append('notes', notes);
+        formData.append('isPrivate', isPrivate ? 'true' : 'false');
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          let msg = `Upload error (${res.status})`;
+          try {
+            const json = JSON.parse(errText);
+            if (json.error) msg = json.error;
+          } catch {
+            if (res.status === 413) msg = 'Photo is too large for cloud upload.';
+          }
+          throw new Error(msg);
+        }
+
+        const data = await res.json();
+        const uploadedList = data.photos || (data.photo ? [data.photo] : []);
+        allUploaded.push(...uploadedList);
       }
 
       setSuccess(true);
+      setUploadProgress('Uploaded successfully!');
       setTimeout(() => {
-        const uploadedList = data.photos || (data.photo ? [data.photo] : []);
-        onUploadSuccess(uploadedList);
+        onUploadSuccess(allUploaded);
         onClose();
         // Reset state
         setFiles([]);
@@ -127,7 +221,8 @@ export default function UploadModal({
         setNotes('');
         setIsPrivate(false);
         setSuccess(false);
-      }, 1000);
+        setUploadProgress('');
+      }, 800);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Upload failed. Please check network.');
     } finally {
@@ -381,9 +476,7 @@ export default function UploadModal({
               {isUploading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>
-                    Uploading {files.length} {files.length === 1 ? 'Memory' : 'Memories'}...
-                  </span>
+                  <span>{uploadProgress || 'Uploading...'}</span>
                 </>
               ) : (
                 <>
