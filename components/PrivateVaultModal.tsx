@@ -138,6 +138,25 @@ export default function PrivateVaultModal({
     }
   };
 
+  // Update photo/video URL inside vault
+  const handleUpdatePhotoUrl = async (id: string, newUrl: string) => {
+    setPhotos((prev) =>
+      prev.map((p) => (p._id === id ? { ...p, url: newUrl } : p))
+    );
+    if (activePhoto && activePhoto._id === id) {
+      setActivePhoto((prev) => (prev ? { ...prev, url: newUrl } : null));
+    }
+    try {
+      await fetch(`/api/photos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: newUrl }),
+      });
+    } catch (err) {
+      console.error('Failed to update photo URL:', err);
+    }
+  };
+
   // Toggle favorite inside vault
   const handleToggleFavorite = async (id: string, current: boolean) => {
     const newStatus = !current;
@@ -413,6 +432,7 @@ export default function PrivateVaultModal({
         onToggleFavorite={handleToggleFavorite}
         onDeletePhoto={handleDeletePhoto}
         onUpdateNote={handleUpdateNote}
+        onUpdateUrl={handleUpdatePhotoUrl}
         onTogglePrivate={async (id, current) => {
           await handleUnhidePhoto(id);
           setActivePhoto(null);

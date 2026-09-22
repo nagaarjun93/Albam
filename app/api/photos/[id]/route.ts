@@ -44,6 +44,12 @@ export async function PATCH(
     if (typeof body.category === 'string') {
       updateFields.category = body.category;
     }
+    if (typeof body.url === 'string') {
+      updateFields.url = body.url.trim();
+    }
+    if (typeof body.thumbnailUrl === 'string') {
+      updateFields.thumbnailUrl = body.thumbnailUrl.trim();
+    }
 
     const result = await photosCol.updateOne(query, { $set: updateFields });
 

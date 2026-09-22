@@ -207,6 +207,25 @@ export default function AlbumApp() {
     }
   };
 
+  // Update photo / video URL (for Google Drive, YouTube, or direct video streaming link)
+  const handleUpdatePhotoUrl = async (id: string, newUrl: string) => {
+    setPhotos((prev) =>
+      prev.map((p) => (p._id === id ? { ...p, url: newUrl } : p))
+    );
+    if (activePhoto && activePhoto._id === id) {
+      setActivePhoto((prev) => (prev ? { ...prev, url: newUrl } : null));
+    }
+    try {
+      await fetch(`/api/photos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: newUrl }),
+      });
+    } catch (err) {
+      console.error('Failed to update photo URL:', err);
+    }
+  };
+
   // Delete photo
   const handleDeletePhoto = async (id: string) => {
     setPhotos((prev) => prev.filter((p) => p._id !== id));
@@ -387,6 +406,7 @@ export default function AlbumApp() {
         onDeletePhoto={handleDeletePhoto}
         onUpdateNote={handleUpdateNote}
         onTogglePrivate={handleTogglePrivate}
+        onUpdateUrl={handleUpdatePhotoUrl}
         currentIndex={currentPhotoIndex}
         totalCount={photos.length}
       />
