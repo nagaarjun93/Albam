@@ -356,9 +356,18 @@ export default function AlbumApp() {
 
             {/* Seamless All Loaded Indicator (No Stop / No Load More button) */}
             <div className="mt-12 text-center text-xs text-rose-600/80 font-medium flex items-center justify-center gap-2 py-4">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <span>All {photos.length} Cherished Memories Loaded Completely</span>
-              <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+              {photos.length < totalPhotos ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
+                  <span>Streaming more memories... ({photos.length} of {totalPhotos})</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <span>All {photos.length} Cherished Memories Loaded Completely</span>
+                  <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                </>
+              )}
             </div>
           </>
         )}

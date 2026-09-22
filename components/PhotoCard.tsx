@@ -11,7 +11,10 @@ interface PhotoCardProps {
 }
 
 export default function PhotoCard({ photo, onOpen, onToggleFavorite }: PhotoCardProps) {
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const displayUrl = photo.thumbnailUrl || photo.url;
+  const isDataUri = !!(displayUrl && displayUrl.startsWith('data:'));
+  const [imageLoaded, setImageLoaded] = useState(isDataUri);
+  const [hasError, setHasError] = useState(false);
   const isVideo = photo.mediaType === 'video';
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
@@ -33,8 +36,6 @@ export default function PhotoCard({ photo, onOpen, onToggleFavorite }: PhotoCard
     }
   };
 
-  const displayUrl = photo.thumbnailUrl || photo.url;
-
   return (
     <div
       onClick={() => onOpen(photo)}
@@ -43,7 +44,7 @@ export default function PhotoCard({ photo, onOpen, onToggleFavorite }: PhotoCard
       {/* Media container */}
       <div className="relative w-full aspect-[4/5] sm:aspect-square overflow-hidden bg-stone-100">
         {/* Placeholder skeleton while loading */}
-        {!imageLoaded && (
+        {!imageLoaded && !hasError && (
           <div className="absolute inset-0 bg-gradient-to-tr from-rose-50 to-pink-50 animate-pulse" />
         )}
 
@@ -69,10 +70,14 @@ export default function PhotoCard({ photo, onOpen, onToggleFavorite }: PhotoCard
           <img
             src={displayUrl}
             alt={photo.title || 'Memory Photo'}
-            loading="lazy"
+            loading={isDataUri ? undefined : 'lazy'}
             onLoad={() => setImageLoaded(true)}
+            onError={() => {
+              setImageLoaded(true);
+              setHasError(true);
+            }}
             className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
+              imageLoaded || isDataUri ? 'opacity-100' : 'opacity-0'
             }`}
           />
         )}
