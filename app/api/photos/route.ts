@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '36', 10);
+    const limit = parseInt(searchParams.get('limit') || '3000', 10);
     const category = searchParams.get('category') || 'All';
     const search = searchParams.get('search') || '';
     const favoritesOnly = searchParams.get('favorites') === 'true';

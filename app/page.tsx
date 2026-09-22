@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useTransition } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
 import HeroBanner from '@/components/HeroBanner';
 import CategoryTabs from '@/components/CategoryTabs';
@@ -9,7 +9,7 @@ import LightboxModal from '@/components/LightboxModal';
 import UploadModal from '@/components/UploadModal';
 import PasscodeLock from '@/components/PasscodeLock';
 import { IPhoto } from '@/lib/types';
-import { Loader2, Heart, Sparkles, RefreshCw } from 'lucide-react';
+import { Loader2, Heart, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export default function HomePage() {
   const [photos, setPhotos] = useState<IPhoto[]>([]);
@@ -17,16 +17,13 @@ export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [totalPhotos, setTotalPhotos] = useState(0);
 
-  // Modals state
+  // Modals & Lock state
   const [activePhoto, setActivePhoto] = useState<IPhoto | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLocked, setIsLocked] = useState(true); // Mandatory lock on every new visit
 
   // Stats
   const [stats, setStats] = useState<{
@@ -36,16 +33,20 @@ export default function HomePage() {
     favoritesCount: number;
   } | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_, startTransition] = useTransition();
-
-  // Check passcode lock
+  // Check passcode lock: Session-based so closing tab or leaving website requires PIN again!
   useEffect(() => {
-    const isUnlocked = localStorage.getItem('album_unlocked');
-    if (!isUnlocked) {
+    const isSessionUnlocked = sessionStorage.getItem('album_session_unlocked');
+    if (isSessionUnlocked === 'true') {
+      setIsLocked(false);
+    } else {
       setIsLocked(true);
     }
   }, []);
+
+  const handleManualLock = () => {
+    sessionStorage.removeItem('album_session_unlocked');
+    setIsLocked(true);
+  };
 
   // Search debounce
   useEffect(() => {
@@ -72,64 +73,43 @@ export default function HomePage() {
     fetchStats();
   }, [fetchStats]);
 
-  // Fetch photos
-  const fetchPhotos = useCallback(
-    async (pageNum = 1, append = false) => {
-      if (pageNum === 1) setIsLoading(true);
-      else setIsLoadingMore(true);
+  // Fetch ALL photos automatically without stopping (No pagination buttons required)
+  const fetchPhotos = useCallback(async () => {
+    setIsLoading(true);
 
-      try {
-        const params = new URLSearchParams({
-          page: pageNum.toString(),
-          limit: '36',
-          category: activeCategory,
-          search: debouncedSearch,
-        });
+    try {
+      const params = new URLSearchParams({
+        page: '1',
+        limit: '3000', // Load all 1131+ photos in one continuous stream
+        category: activeCategory,
+        search: debouncedSearch,
+      });
 
-        if (activeCategory === 'Favorites') {
-          params.set('favorites', 'true');
-        }
-
-        const res = await fetch(`/api/photos?${params.toString()}`);
-        if (!res.ok) throw new Error('Failed to fetch photos');
-
-        const data = await res.json();
-
-        if (append) {
-          setPhotos((prev) => [...prev, ...data.photos]);
-        } else {
-          setPhotos(data.photos || []);
-        }
-
-        setHasMore(data.hasMore);
-        setTotalPhotos(data.total);
-        if (data.categories && data.categories.length > 0) {
-          setCategories(data.categories);
-        }
-      } catch (err) {
-        console.error('Error fetching photos:', err);
-      } finally {
-        setIsLoading(false);
-        setIsLoadingMore(false);
+      if (activeCategory === 'Favorites') {
+        params.set('favorites', 'true');
       }
-    },
-    [activeCategory, debouncedSearch]
-  );
+
+      const res = await fetch(`/api/photos?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to fetch photos');
+
+      const data = await res.json();
+
+      setPhotos(data.photos || []);
+      setTotalPhotos(data.total);
+      if (data.categories && data.categories.length > 0) {
+        setCategories(data.categories);
+      }
+    } catch (err) {
+      console.error('Error fetching photos:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeCategory, debouncedSearch]);
 
   // Re-fetch on category or search change
   useEffect(() => {
-    setPage(1);
-    fetchPhotos(1, false);
+    fetchPhotos();
   }, [fetchPhotos]);
-
-  // Load more
-  const handleLoadMore = () => {
-    if (!isLoadingMore && hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchPhotos(nextPage, true);
-    }
-  };
 
   // Toggle favorite with optimistic update
   const handleToggleFavorite = async (id: string, current: boolean) => {
@@ -228,7 +208,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between">
-      {/* Optional Passcode Screen */}
+      {/* 6-Digit Passcode Lock (312005) */}
       {isLocked && <PasscodeLock onUnlock={() => setIsLocked(false)} />}
 
       {/* Navigation Bar */}
@@ -237,9 +217,11 @@ export default function HomePage() {
         stats={stats}
         onSelectCategory={setActiveCategory}
         currentCategory={activeCategory}
+        onLock={handleManualLock}
       />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-16">
+      {/* Main Full-Width Responsive Container (Mobile to 4K Laptop/Desktop) */}
+      <main className="flex-1 max-w-[1920px] mx-auto w-full px-2 sm:px-4 md:px-6 lg:px-8 xl:px-10 pb-16">
         {/* Romantic Hero Banner with Search */}
         <HeroBanner
           searchQuery={searchQuery}
@@ -248,7 +230,7 @@ export default function HomePage() {
         />
 
         {/* Category Tabs */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <CategoryTabs
             categories={categories}
             activeCategory={activeCategory}
@@ -259,12 +241,12 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Loading Spinner for First Load */}
+        {/* Loading Spinner */}
         {isLoading ? (
           <div className="py-24 flex flex-col items-center justify-center text-rose-500">
             <Loader2 className="w-10 h-10 animate-spin mb-3 text-rose-500" />
             <p className="text-sm font-medium text-stone-600">
-              Loading cherished memories...
+              Loading all {totalPhotos > 0 ? totalPhotos : '1100+'} memories, please wait a moment...
             </p>
           </div>
         ) : photos.length === 0 ? (
@@ -279,7 +261,7 @@ export default function HomePage() {
             <p className="text-xs text-stone-500 mb-6">
               {searchQuery
                 ? `No photos matched "${searchQuery}". Try a different keyword.`
-                : 'Tap "Add Memory" to upload your first photo or run the media sync.'}
+                : 'Tap "Add Memory" to upload a new memory.'}
             </p>
             <button
               onClick={() => setIsUploadOpen(true)}
@@ -289,9 +271,9 @@ export default function HomePage() {
             </button>
           </div>
         ) : (
-          /* Gallery Grid */
+          /* Fully Responsive Masonry Grid (Mobile to Laptop) */
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-2.5 sm:gap-3.5 md:gap-4">
               {photos.map((photo, index) => (
                 <PhotoCard
                   key={photo._id || index}
@@ -302,28 +284,12 @@ export default function HomePage() {
               ))}
             </div>
 
-            {/* Load More Button / Indicator */}
-            {hasMore && (
-              <div className="mt-12 text-center">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={isLoadingMore}
-                  className="px-8 py-3 rounded-full bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 shadow-md font-medium text-xs sm:text-sm hover:scale-105 active:scale-95 transition-all duration-200 inline-flex items-center gap-2"
-                >
-                  {isLoadingMore ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
-                      <span>Loading more memories...</span>
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-4 h-4 text-rose-500" />
-                      <span>Load More Memories</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
+            {/* Seamless All Loaded Indicator (No Stop / No Load More button) */}
+            <div className="mt-12 text-center text-xs text-rose-600/80 font-medium flex items-center justify-center gap-2 py-4">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span>All {photos.length} Cherished Memories Loaded Completely</span>
+              <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+            </div>
           </>
         )}
       </main>
@@ -351,7 +317,7 @@ export default function HomePage() {
 
       {/* Romantic Footer */}
       <footer className="w-full glass border-t border-rose-100 py-6 text-center text-xs text-stone-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col items-center justify-center gap-2">
+        <div className="max-w-[1920px] mx-auto px-4 flex flex-col items-center justify-center gap-2">
           <p className="flex items-center gap-1.5 font-medium text-stone-700">
             <span>Made with endless love</span>
             <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500 animate-pulse" />
@@ -365,4 +331,3 @@ export default function HomePage() {
     </div>
   );
 }
-
