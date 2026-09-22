@@ -115,6 +115,10 @@ export default function AlbumApp() {
       const totalPages = data.totalPages || 1;
       for (let p = 2; p <= totalPages; p++) {
         if (cancelFetchRef.current !== fetchId) break;
+        // Non-blocking gentle delay to allow browser layout & paint without freezing mobile CPU
+        await new Promise((r) => setTimeout(r, 60));
+        if (cancelFetchRef.current !== fetchId) break;
+
         try {
           const nextParams = new URLSearchParams({
             page: p.toString(),
@@ -364,7 +368,7 @@ export default function AlbumApp() {
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>All {photos.length} Cherished Memories Loaded Completely</span>
+                  <span>All {totalPhotos} Cherished Memories Loaded Completely</span>
                   <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
                 </>
               )}

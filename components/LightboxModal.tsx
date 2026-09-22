@@ -15,6 +15,7 @@ import {
   Tag,
   Lock,
   Unlock,
+  Film,
 } from 'lucide-react';
 
 interface LightboxModalProps {
@@ -47,11 +48,13 @@ export default function LightboxModal({
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
+  const [videoError, setVideoError] = useState(false);
 
   useEffect(() => {
     if (photo) {
       setNoteText(photo.notes || '');
       setIsEditingNote(false);
+      setVideoError(false);
     }
   }, [photo]);
 
@@ -210,13 +213,35 @@ export default function LightboxModal({
         {/* Media */}
         <div className="relative max-w-full max-h-full flex items-center justify-center">
           {isVideo ? (
-            <video
-              src={photo.url}
-              controls
-              autoPlay
-              playsInline
-              className="max-h-[75vh] max-w-[95vw] rounded-lg shadow-2xl object-contain"
-            />
+            <div className="relative flex flex-col items-center justify-center">
+              {!videoError ? (
+                <video
+                  src={photo.url}
+                  controls
+                  autoPlay
+                  playsInline
+                  onError={() => setVideoError(true)}
+                  className="max-h-[75vh] max-w-[95vw] rounded-lg shadow-2xl object-contain"
+                />
+              ) : (
+                <div className="max-w-sm sm:max-w-md mx-auto p-6 sm:p-8 rounded-2xl bg-stone-900/95 border border-rose-500/30 text-center flex flex-col items-center backdrop-blur-md shadow-2xl">
+                  <div className="w-14 h-14 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center mb-3">
+                    <Film className="w-7 h-7 text-rose-400" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-serif font-bold text-white mb-1">
+                    {photo.title || 'Video Memory'}
+                  </h3>
+                  <p className="text-xs text-rose-200/90 mb-4 leading-relaxed">
+                    This video is safely saved on your local computer storage.
+                  </p>
+                  <div className="text-[11px] text-stone-300 bg-black/40 rounded-xl p-3 border border-white/5 space-y-1 text-left">
+                    <p className="font-semibold text-rose-300">💡 Video Playback Info:</p>
+                    <p>• Local computer preview: Available when running on your laptop.</p>
+                    <p>• Cloud streaming: Videos uploaded directly from phone will play anywhere!</p>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
             <img
               src={photo.url}

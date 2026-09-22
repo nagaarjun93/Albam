@@ -50,9 +50,13 @@ export async function POST(request: NextRequest) {
       let url = '';
       let thumbnailUrl = '';
 
-      // Permanent Base64 persistence for images under 5MB in MongoDB Atlas
-      if (!isVideo && buffer.length < 5 * 1024 * 1024) {
-        const mime = file.type || 'image/jpeg';
+      // Permanent Base64 persistence for images and short videos under 12MB in MongoDB Atlas
+      if (buffer.length < 12 * 1024 * 1024) {
+        const mime = isVideo
+          ? file.type || 'video/mp4'
+          : isGif
+          ? 'image/gif'
+          : file.type || 'image/jpeg';
         url = `data:${mime};base64,${buffer.toString('base64')}`;
         thumbnailUrl = url;
       }
