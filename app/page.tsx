@@ -205,10 +205,12 @@ export default function HomePage() {
   };
 
   // Upload success
-  const handleUploadSuccess = (newPhoto: IPhoto) => {
-    if (!newPhoto.isPrivate) {
-      setPhotos((prev) => [newPhoto, ...prev]);
-      setTotalPhotos((prev) => prev + 1);
+  const handleUploadSuccess = (uploaded: IPhoto | IPhoto[]) => {
+    const list = Array.isArray(uploaded) ? uploaded : [uploaded];
+    const publicPhotos = list.filter((p) => !p.isPrivate);
+    if (publicPhotos.length > 0) {
+      setPhotos((prev) => [...publicPhotos, ...prev]);
+      setTotalPhotos((prev) => prev + publicPhotos.length);
     }
     fetchStats();
   };

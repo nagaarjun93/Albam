@@ -1,13 +1,23 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { X, UploadCloud, Heart, Calendar, Tag, CheckCircle2, AlertCircle, Lock } from 'lucide-react';
+import {
+  X,
+  UploadCloud,
+  Heart,
+  Calendar,
+  Tag,
+  CheckCircle2,
+  AlertCircle,
+  Lock,
+  Layers,
+} from 'lucide-react';
 import { IPhoto } from '@/lib/types';
 
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUploadSuccess: (newPhoto: IPhoto) => void;
+  onUploadSuccess: (newPhotos: IPhoto[]) => void;
   existingCategories: string[];
 }
 
@@ -17,8 +27,8 @@ export default function UploadModal({
   onUploadSuccess,
   existingCategories,
 }: UploadModalProps) {
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [caption, setCaption] = useState('');
   const [category, setCategory] = useState('Memories');
@@ -35,35 +45,46 @@ export default function UploadModal({
   if (!isOpen) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length > 0) {
+      setFiles(selectedFiles);
       setError(null);
-      const url = URL.createObjectURL(selectedFile);
-      setPreviewUrl(url);
 
-      // Auto default title from file name without extension
-      const baseName = selectedFile.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
-      if (!title) {
+      const urls = selectedFiles.map((f) => URL.createObjectURL(f));
+      setPreviewUrls(urls);
+
+      // Auto default title if 1 file
+      if (selectedFiles.length === 1 && !title) {
+        const baseName = selectedFiles[0].name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
         setTitle(baseName.charAt(0).toUpperCase() + baseName.slice(1));
+      } else if (selectedFiles.length > 1 && !title) {
+        setTitle(`Special Moments (${selectedFiles.length} items)`);
       }
     }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const droppedFile = e.dataTransfer.files?.[0];
-    if (droppedFile) {
-      setFile(droppedFile);
+    const droppedFiles = Array.from(e.dataTransfer.files || []);
+    if (droppedFiles.length > 0) {
+      setFiles(droppedFiles);
       setError(null);
-      setPreviewUrl(URL.createObjectURL(droppedFile));
+      const urls = droppedFiles.map((f) => URL.createObjectURL(f));
+      setPreviewUrls(urls);
+      if (!title) {
+        setTitle(
+          droppedFiles.length === 1
+            ? droppedFiles[0].name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ')
+            : `Special Moments (${droppedFiles.length} items)`
+        );
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) {
-      setError('Please choose a photo or video to upload.');
+    if (files.length === 0) {
+      setError('Please choose at least one photo or video to upload.');
       return;
     }
 
@@ -72,7 +93,9 @@ export default function UploadModal({
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
       formData.append('title', title || 'Special Moment');
       formData.append('caption', caption);
       formData.append('category', category === 'Custom' ? customCategory || 'Memories' : category);
@@ -88,16 +111,17 @@ export default function UploadModal({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to upload photo');
+        throw new Error(data.error || 'Failed to upload photo(s)');
       }
 
       setSuccess(true);
       setTimeout(() => {
-        onUploadSuccess(data.photo);
+        const uploadedList = data.photos || (data.photo ? [data.photo] : []);
+        onUploadSuccess(uploadedList);
         onClose();
         // Reset state
-        setFile(null);
-        setPreviewUrl(null);
+        setFiles([]);
+        setPreviewUrls([]);
         setTitle('');
         setCaption('');
         setNotes('');
@@ -110,8 +134,6 @@ export default function UploadModal({
       setIsUploading(false);
     }
   };
-
-  const isVideo = file?.type.startsWith('video/') || file?.name.endsWith('.mp4');
 
   const categories = [
     'Memories',
@@ -142,10 +164,10 @@ export default function UploadModal({
           </div>
           <div>
             <h2 className="text-xl font-serif font-bold text-stone-900">
-              Add A Cherished Memory
+              Add Cherished Memories
             </h2>
             <p className="text-xs text-stone-500">
-              Save a new photo or video forever in our album
+              Upload single or multiple photos & videos directly into our album
             </p>
           </div>
         </div>
@@ -160,18 +182,22 @@ export default function UploadModal({
         {success && (
           <div className="mb-4 p-3 rounded-xl bg-emerald-50 text-emerald-700 text-xs flex items-center gap-2 border border-emerald-200">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>Memory uploaded and saved to database successfully!</span>
+            <span>
+              {files.length > 1
+                ? `${files.length} memories uploaded and saved successfully!`
+                : 'Memory uploaded and saved successfully!'}
+            </span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* File drop zone / picker */}
+          {/* File drop zone / picker (Supports Multiple Files) */}
           <div
             onClick={() => fileInputRef.current?.click()}
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
-            className={`relative rounded-2xl border-2 border-dashed transition-all cursor-pointer overflow-hidden p-6 text-center ${
-              previewUrl
+            className={`relative rounded-2xl border-2 border-dashed transition-all cursor-pointer overflow-hidden p-5 text-center ${
+              previewUrls.length > 0
                 ? 'border-rose-400 bg-rose-50/20'
                 : 'border-stone-300 hover:border-rose-400 bg-stone-50/50 hover:bg-rose-50/10'
             }`}
@@ -181,30 +207,51 @@ export default function UploadModal({
               ref={fileInputRef}
               onChange={handleFileChange}
               accept="image/*,video/mp4"
+              multiple
               className="hidden"
             />
 
-            {previewUrl ? (
-              <div className="relative aspect-video max-h-48 mx-auto flex items-center justify-center">
-                {isVideo ? (
-                  <video src={previewUrl} className="max-h-48 rounded-xl object-contain shadow-sm" />
+            {previewUrls.length > 0 ? (
+              <div className="space-y-2">
+                {previewUrls.length === 1 ? (
+                  <div className="relative aspect-video max-h-44 mx-auto flex items-center justify-center">
+                    {files[0]?.type.startsWith('video/') ? (
+                      <video src={previewUrls[0]} className="max-h-44 rounded-xl object-contain shadow-sm" />
+                    ) : (
+                      <img src={previewUrls[0]} alt="Preview" className="max-h-44 rounded-xl object-contain shadow-sm" />
+                    )}
+                  </div>
                 ) : (
-                  <img src={previewUrl} alt="Preview" className="max-h-48 rounded-xl object-contain shadow-sm" />
+                  /* Multiple Photos Thumbnail Grid Preview */
+                  <div className="grid grid-cols-4 gap-2 max-h-44 overflow-y-auto p-1">
+                    {previewUrls.map((url, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-rose-200">
+                        {files[idx]?.type.startsWith('video/') ? (
+                          <div className="w-full h-full bg-stone-900 flex items-center justify-center text-white text-[10px]">VIDEO</div>
+                        ) : (
+                          <img src={url} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
-                <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center text-white text-xs font-medium">
-                  Click to change photo
-                </div>
+                <p className="text-xs text-rose-600 font-medium flex items-center justify-center gap-1">
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>
+                    {files.length} {files.length === 1 ? 'file selected' : 'files selected'} (Tap to change)
+                  </span>
+                </p>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-4">
                 <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center mb-3">
                   <UploadCloud className="w-6 h-6" />
                 </div>
-                <p className="text-sm font-medium text-stone-800">
-                  Tap here to pick from phone or drag & drop
+                <p className="text-sm font-semibold text-stone-800">
+                  Tap to pick one or more photos from phone / computer
                 </p>
                 <p className="text-xs text-stone-400 mt-1">
-                  Supports Photos, Videos (MP4) and GIFs
+                  Select multiple photos at once • Supports Images, Videos (MP4), GIFs
                 </p>
               </div>
             )}
@@ -213,13 +260,13 @@ export default function UploadModal({
           {/* Title */}
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-1">
-              Memory Title
+              Memory Title {files.length > 1 && '(will be numbered for each photo)'}
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Our First Beach Sunset"
+              placeholder="e.g. Our Beautiful Trip"
               className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-400"
             />
           </div>
@@ -328,18 +375,22 @@ export default function UploadModal({
             </button>
             <button
               type="submit"
-              disabled={isUploading || !file}
+              disabled={isUploading || files.length === 0}
               className="px-6 py-2.5 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs sm:text-sm font-medium shadow-md shadow-rose-500/25 disabled:opacity-50 transition-all flex items-center gap-2"
             >
               {isUploading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Uploading to Album...</span>
+                  <span>
+                    Uploading {files.length} {files.length === 1 ? 'Memory' : 'Memories'}...
+                  </span>
                 </>
               ) : (
                 <>
                   <Heart className="w-4 h-4 fill-white" />
-                  <span>Save Memory</span>
+                  <span>
+                    Save {files.length > 1 ? `${files.length} Memories` : 'Memory'}
+                  </span>
                 </>
               )}
             </button>
@@ -349,4 +400,3 @@ export default function UploadModal({
     </div>
   );
 }
-
