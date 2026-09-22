@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { X, UploadCloud, Heart, Calendar, Tag, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, UploadCloud, Heart, Calendar, Tag, CheckCircle2, AlertCircle, Lock } from 'lucide-react';
 import { IPhoto } from '@/lib/types';
 
 interface UploadModalProps {
@@ -25,6 +25,7 @@ export default function UploadModal({
   const [customCategory, setCustomCategory] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -77,6 +78,7 @@ export default function UploadModal({
       formData.append('category', category === 'Custom' ? customCategory || 'Memories' : category);
       formData.append('date', date);
       formData.append('notes', notes);
+      formData.append('isPrivate', isPrivate ? 'true' : 'false');
 
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -99,6 +101,7 @@ export default function UploadModal({
         setTitle('');
         setCaption('');
         setNotes('');
+        setIsPrivate(false);
         setSuccess(false);
       }, 1000);
     } catch (err: unknown) {
@@ -275,6 +278,41 @@ export default function UploadModal({
               placeholder="Write a sweet message, what happened this day, or how you felt..."
               rows={2}
               className="w-full px-3.5 py-2 rounded-xl border border-stone-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 resize-none"
+            />
+          </div>
+
+          {/* Secret Private Memory Toggle */}
+          <div
+            onClick={() => setIsPrivate(!isPrivate)}
+            className={`p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+              isPrivate
+                ? 'bg-rose-50 border-rose-300 shadow-sm'
+                : 'bg-stone-50/70 hover:bg-stone-100/70 border-stone-200'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+                  isPrivate ? 'bg-rose-500 text-white' : 'bg-stone-200 text-stone-600'
+                }`}
+              >
+                <Lock className="w-4 h-4" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-semibold text-stone-800 flex items-center gap-1">
+                  <span>Save to Secret Private Vault</span>
+                  {isPrivate && <span className="text-[10px] px-1.5 py-0.2 bg-rose-200 text-rose-800 rounded-full">Hidden</span>}
+                </p>
+                <p className="text-[10px] text-stone-500">
+                  Hidden from public album • Requires PIN 0702
+                </p>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={isPrivate}
+              onChange={(e) => setIsPrivate(e.target.checked)}
+              className="w-4 h-4 text-rose-500 rounded border-stone-300 focus:ring-rose-400 cursor-pointer"
             />
           </div>
 

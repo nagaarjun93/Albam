@@ -14,6 +14,7 @@ interface NavbarProps {
   onSelectCategory: (cat: string) => void;
   currentCategory: string;
   onLock?: () => void;
+  onOpenPrivateVault?: () => void;
 }
 
 export default function Navbar({
@@ -22,14 +23,34 @@ export default function Navbar({
   onSelectCategory,
   currentCategory,
   onLock,
+  onOpenPrivateVault,
 }: NavbarProps) {
+  const tapHistoryRef = React.useRef<number[]>([]);
+
+  const handleLogoTap = () => {
+    const now = Date.now();
+    // Keep taps within last 1.5s
+    tapHistoryRef.current = tapHistoryRef.current.filter((t) => now - t < 1500);
+    tapHistoryRef.current.push(now);
+
+    if (tapHistoryRef.current.length >= 3) {
+      tapHistoryRef.current = [];
+      if (onOpenPrivateVault) {
+        onOpenPrivateVault();
+      }
+    } else {
+      onSelectCategory('All');
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-40 w-full glass border-b border-rose-100/50 backdrop-blur-md transition-all">
+    <header className="sticky top-0 z-40 w-full glass border-b border-rose-100/50 backdrop-blur-md transition-all select-none">
       <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
-        {/* Logo / Title */}
+        {/* Secret 3-Tap Logo / Title */}
         <div 
-          onClick={() => onSelectCategory('All')}
+          onClick={handleLogoTap}
           className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0"
+          title="Our Memories"
         >
           <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-400 flex items-center justify-center shadow-lg shadow-rose-500/20 group-hover:scale-105 transition-transform duration-300">
             <Heart className="w-4 h-4 sm:w-6 sm:h-6 text-white fill-white animate-pulse" />

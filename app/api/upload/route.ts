@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     const category = (formData.get('category') as string) || 'Memories';
     const notes = (formData.get('notes') as string) || '';
     const date = (formData.get('date') as string) || new Date().toISOString().split('T')[0];
+    const isPrivate = formData.get('isPrivate') === 'true';
 
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
@@ -79,6 +80,7 @@ export async function POST(request: NextRequest) {
       mediaType,
       date,
       isFavorite: false,
+      isPrivate,
       notes,
       fileName,
       fileSize: buffer.length,

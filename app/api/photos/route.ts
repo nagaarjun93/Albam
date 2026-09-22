@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const favoritesOnly = searchParams.get('favorites') === 'true';
     const mediaType = searchParams.get('mediaType');
+    const isPrivate = searchParams.get('isPrivate') === 'true';
 
     const db = await getDatabase();
     const photosCol = db.collection<IPhoto>('photos');
@@ -20,6 +21,12 @@ export async function GET(request: NextRequest) {
     // Build filter query
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const filter: any = {};
+
+    if (isPrivate) {
+      filter.isPrivate = true;
+    } else {
+      filter.isPrivate = { $ne: true };
+    }
 
     if (category && !['All', 'Favorites', 'Videos', 'Images', 'Photos'].includes(category)) {
       filter.category = category;
@@ -57,7 +64,7 @@ export async function GET(request: NextRequest) {
         .limit(limit)
         .toArray(),
       photosCol.countDocuments(filter),
-      photosCol.distinct('category'),
+      photosCol.distinct('category', filter),
     ]);
 
     return NextResponse.json({
@@ -98,6 +105,7 @@ export async function POST(request: NextRequest) {
       mediaType: mediaType || 'image',
       date: date || new Date().toISOString().split('T')[0],
       isFavorite: false,
+      isPrivate: body.isPrivate === true,
       notes: notes || '',
       fileName: body.fileName || 'upload.jpg',
       createdAt: new Date().toISOString(),

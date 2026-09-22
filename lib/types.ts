@@ -8,6 +8,7 @@ export interface IPhoto {
   mediaType: 'image' | 'video' | 'gif';
   date: string;
   isFavorite: boolean;
+  isPrivate?: boolean;
   notes?: string;
   fileSize?: number;
   fileName?: string;

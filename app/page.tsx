@@ -8,6 +8,7 @@ import PhotoCard from '@/components/PhotoCard';
 import LightboxModal from '@/components/LightboxModal';
 import UploadModal from '@/components/UploadModal';
 import PasscodeLock from '@/components/PasscodeLock';
+import PrivateVaultModal from '@/components/PrivateVaultModal';
 import { IPhoto } from '@/lib/types';
 import { Loader2, Heart, Sparkles, CheckCircle2 } from 'lucide-react';
 
@@ -24,6 +25,7 @@ export default function HomePage() {
   const [activePhoto, setActivePhoto] = useState<IPhoto | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isLocked, setIsLocked] = useState(true); // Mandatory lock on every new visit
+  const [isPrivateVaultOpen, setIsPrivateVaultOpen] = useState(false); // Secret 3-tap vault (PIN 0702)
 
   // Stats
   const [stats, setStats] = useState<{
@@ -178,10 +180,36 @@ export default function HomePage() {
     }
   };
 
+  // Move photo into or out of Private Vault
+  const handleTogglePrivate = async (id: string, current: boolean) => {
+    const newPrivate = !current;
+    if (newPrivate) {
+      // Hide from public view immediately
+      setPhotos((prev) => prev.filter((p) => p._id !== id));
+      setTotalPhotos((prev) => Math.max(0, prev - 1));
+    }
+    if (activePhoto && activePhoto._id === id) {
+      setActivePhoto((prev) => (prev ? { ...prev, isPrivate: newPrivate } : null));
+    }
+
+    try {
+      await fetch(`/api/photos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPrivate: newPrivate }),
+      });
+      fetchStats();
+    } catch (err) {
+      console.error('Failed to toggle private status:', err);
+    }
+  };
+
   // Upload success
   const handleUploadSuccess = (newPhoto: IPhoto) => {
-    setPhotos((prev) => [newPhoto, ...prev]);
-    setTotalPhotos((prev) => prev + 1);
+    if (!newPhoto.isPrivate) {
+      setPhotos((prev) => [newPhoto, ...prev]);
+      setTotalPhotos((prev) => prev + 1);
+    }
     fetchStats();
   };
 
@@ -218,6 +246,7 @@ export default function HomePage() {
         onSelectCategory={setActiveCategory}
         currentCategory={activeCategory}
         onLock={handleManualLock}
+        onOpenPrivateVault={() => setIsPrivateVaultOpen(true)}
       />
 
       {/* Main Full-Width Responsive Container (Mobile to 4K Laptop/Desktop) */}
@@ -303,8 +332,20 @@ export default function HomePage() {
         onToggleFavorite={handleToggleFavorite}
         onDeletePhoto={handleDeletePhoto}
         onUpdateNote={handleUpdateNote}
+        onTogglePrivate={handleTogglePrivate}
         currentIndex={currentPhotoIndex}
         totalCount={photos.length}
+      />
+
+      {/* Secret Private Vault Modal (Unlocked with 3 Taps + PIN 0702) */}
+      <PrivateVaultModal
+        isOpen={isPrivateVaultOpen}
+        onClose={() => setIsPrivateVaultOpen(false)}
+        onOpenUploadPrivate={() => setIsUploadOpen(true)}
+        onRefreshPublicPhotos={() => {
+          fetchPhotos();
+          fetchStats();
+        }}
       />
 
       {/* Upload Modal */}

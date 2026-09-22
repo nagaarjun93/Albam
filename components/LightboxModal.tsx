@@ -13,6 +13,8 @@ import {
   Edit3,
   Save,
   Tag,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 
 interface LightboxModalProps {
@@ -23,6 +25,7 @@ interface LightboxModalProps {
   onToggleFavorite: (id: string, current: boolean) => void;
   onDeletePhoto: (id: string) => void;
   onUpdateNote: (id: string, note: string) => void;
+  onTogglePrivate?: (id: string, current: boolean) => void;
   currentIndex: number;
   totalCount: number;
 }
@@ -35,6 +38,7 @@ export default function LightboxModal({
   onToggleFavorite,
   onDeletePhoto,
   onUpdateNote,
+  onTogglePrivate,
   currentIndex,
   totalCount,
 }: LightboxModalProps) {
@@ -134,6 +138,21 @@ export default function LightboxModal({
               }`}
             />
           </button>
+
+          {/* Secret Vault Lock / Unlock toggle button */}
+          {onTogglePrivate && (
+            <button
+              onClick={() => photo._id && onTogglePrivate(photo._id, !!photo.isPrivate)}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                photo.isPrivate
+                  ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+                  : 'bg-white/10 hover:bg-white/20 text-white'
+              }`}
+              title={photo.isPrivate ? 'Unhide / Move to Public Album' : 'Move to Secret Private Vault'}
+            >
+              {photo.isPrivate ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+            </button>
+          )}
 
           {/* Download button */}
           <button

@@ -29,6 +29,9 @@ export async function PATCH(
     if (typeof body.isFavorite === 'boolean') {
       updateFields.isFavorite = body.isFavorite;
     }
+    if (typeof body.isPrivate === 'boolean') {
+      updateFields.isPrivate = body.isPrivate;
+    }
     if (typeof body.notes === 'string') {
       updateFields.notes = body.notes;
     }
